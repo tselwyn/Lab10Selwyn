@@ -7,7 +7,9 @@
 #include <allegro5/allegro_image.h>
 #include <stdio.h>
 #include <cstdlib>
+#include <iostream>
 #include "Sprite.h"
+using namespace std;
 
 sprite::sprite()
 {
@@ -68,6 +70,42 @@ void sprite::updatesprite()
 {
 	if (dead) return;
 
+	// SpinningSprite always rotates
+	if (specialtyPower[0])
+	{
+		angle += 0.05f;
+	}
+
+	// FreezeSprite - if frozen, count down and skip movement
+	if (specialtyPower[3] && freezeTimer > 0)
+	{
+		freezeTimer--;
+		if (freezeTimer <= 0)
+			CollisionIsTrue = false;
+
+		// still animate frames but dont move
+		if (framecount++ > framedelay)
+		{
+			framecount = 0;
+			curframe++;
+			if (curframe >= maxframe)
+				curframe = 0;
+		}
+		return;
+	}
+
+	// BabySprite - count down scale timer
+	if (specialtyPower[2] && scaleTimer > 0)
+	{
+		scaleTimer--;
+		if (scaleTimer <= 0)
+		{
+			scale = 1.0f;
+			CollisionIsTrue = false;
+		}
+	}
+
+	// normal movement
 	if (++xcount > xdelay)
 	{
 		xcount = 0;
@@ -92,6 +130,7 @@ void sprite::updatesprite()
 void sprite::bouncesprite(int SCREEN_W, int SCREEN_H)
 {
 	if (dead) return;
+	if (specialtyPower[3] && freezeTimer > 0) return;
 
 	if (x < 0)
 	{
@@ -124,7 +163,41 @@ void sprite::drawSprite()
 {
 	if (dead) return;
 
-	al_draw_bitmap(image[curframe], x, y, 0);
+	float w = (float)al_get_bitmap_width(image[curframe]);
+	float h = (float)al_get_bitmap_height(image[curframe]);
+
+	// SpinningSprite - rotates around center
+	if (specialtyPower[0])
+	{
+		al_draw_rotated_bitmap(image[curframe], w / 2, h / 2,
+			(float)x + w / 2, (float)y + h / 2, angle, 0);
+	}
+	// ScaredSprite - tinted color after collision
+	else if (specialtyPower[1] && CollisionIsTrue)
+	{
+		al_draw_tinted_bitmap(image[curframe],
+			al_map_rgba_f(tintR, tintG, tintB, 1.0f), (float)x, (float)y, 0);
+	}
+	// BabySprite - scaled down after collision
+	else if (specialtyPower[2] && CollisionIsTrue && scaleTimer > 0)
+	{
+		float scaledW = w * scale;
+		float scaledH = h * scale;
+		float drawX = (float)x + (w - scaledW) / 2;
+		float drawY = (float)y + (h - scaledH) / 2;
+		al_draw_scaled_bitmap(image[curframe], 0, 0, w, h,
+			drawX, drawY, scaledW, scaledH, 0);
+	}
+	// FreezeSprite - draws normal but frozen in place
+	else if (specialtyPower[3] && CollisionIsTrue && freezeTimer > 0)
+	{
+		al_draw_bitmap(image[curframe], (float)x, (float)y, 0);
+	}
+	// normal draw
+	else
+	{
+		al_draw_bitmap(image[curframe], (float)x, (float)y, 0);
+	}
 }
 
 void sprite::assignRandomPower()
@@ -148,10 +221,44 @@ void sprite::collision(sprite spriteArray[], int arraySize, int myIndex, int scr
 			if (y < spriteArray[i].getY() + spriteArray[i].getHeight() &&
 				y + height > spriteArray[i].getY())
 			{
-				CollisionIsTrue = true;
+				// ScaredSprite - random color and teleport
+				if (specialtyPower[1])
+				{
+					tintR = (float)(rand() % 100) / 100.0f;
+					tintG = (float)(rand() % 100) / 100.0f;
+					tintB = (float)(rand() % 100) / 100.0f;
+					CollisionIsTrue = true;
+					x = rand() % (screenW - width);
+					y = rand() % (screenH - height);
+				}
+				// BabySprite - scale in half and teleport
+				else if (specialtyPower[2])
+				{
+					scale *= 0.5f;
+					scaleTimer = 600; // 10 seconds at 60 FPS
+					CollisionIsTrue = true;
+					x = rand() % (screenW - width);
+					y = rand() % (screenH - height);
 
-				x = rand() % (screenW - width);
-				y = rand() % (screenH - height);
+					if (scale < 0.05f)
+					{
+						dead = true;
+						cout << "Sprite died!" << endl;
+					}
+				}
+				// FreezeSprite - stop movement for 5 seconds
+				else if (specialtyPower[3])
+				{
+					freezeTimer = 300; // 5 seconds at 60 FPS
+					CollisionIsTrue = true;
+				}
+				// SpinningSprite or default - just teleport
+				else
+				{
+					CollisionIsTrue = true;
+					x = rand() % (screenW - width);
+					y = rand() % (screenH - height);
+				}
 			}
 		}
 	}
