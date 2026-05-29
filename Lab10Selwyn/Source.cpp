@@ -1,20 +1,101 @@
-// Lab10Selwyn.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
+// Tyler Selwyn
+// CPSC 440 - Game Programming
+// Lab 10 - Sprite Specialty Powers
+// Source.cpp - Main game loop
 
+#include <allegro5/allegro.h>
+#include <allegro5/allegro_image.h>
+#include "Sprite.h"
 #include <iostream>
+#include <cstdlib>
+#include <ctime>
+using namespace std;
 
-int main()
+const int NUM_SPRITES = 5;
+
+int main(void)
 {
-    std::cout << "Hello World!\n";
+	int width = 640;
+	int height = 480;
+	bool done = false;
+	bool redraw = true;
+	const int FPS = 60;
+
+	ALLEGRO_DISPLAY* display = NULL;
+	ALLEGRO_EVENT_QUEUE* event_queue = NULL;
+	ALLEGRO_TIMER* timer = NULL;
+
+	if (!al_init())
+		return -1;
+
+	display = al_create_display(width, height);
+	if (!display)
+		return -1;
+
+	al_install_keyboard();
+	al_init_image_addon();
+
+	timer = al_create_timer(1.0 / FPS);
+
+	event_queue = al_create_event_queue();
+	al_register_event_source(event_queue, al_get_keyboard_event_source());
+	al_register_event_source(event_queue, al_get_timer_event_source(timer));
+	al_register_event_source(event_queue, al_get_display_event_source(display));
+
+	srand((unsigned)time(NULL));
+
+	sprite sprites[NUM_SPRITES];
+
+	for (int i = 0; i < NUM_SPRITES; i++)
+	{
+		sprites[i].load_animated_sprite(9);
+		sprites[i].assignRandomPower();
+	}
+
+	al_set_target_bitmap(al_get_backbuffer(display));
+	al_start_timer(timer);
+
+	while (!done)
+	{
+		ALLEGRO_EVENT ev;
+		al_wait_for_event(event_queue, &ev);
+
+		if (ev.type == ALLEGRO_EVENT_TIMER)
+		{
+			for (int i = 0; i < NUM_SPRITES; i++)
+			{
+				sprites[i].bouncesprite(width, height);
+				sprites[i].updatesprite();
+			}
+			redraw = true;
+		}
+		else if (ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
+		{
+			done = true;
+		}
+		else if (ev.type == ALLEGRO_EVENT_KEY_DOWN)
+		{
+			if (ev.keyboard.keycode == ALLEGRO_KEY_ESCAPE)
+				done = true;
+		}
+
+		if (redraw && al_is_event_queue_empty(event_queue))
+		{
+			redraw = false;
+			al_clear_to_color(al_map_rgb(0, 0, 0));
+
+			for (int i = 0; i < NUM_SPRITES; i++)
+			{
+				sprites[i].drawSprite();
+			}
+
+			al_flip_display();
+		}
+	}
+
+	al_destroy_event_queue(event_queue);
+	al_destroy_timer(timer);
+	al_destroy_display(display);
+
+	return 0;
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
