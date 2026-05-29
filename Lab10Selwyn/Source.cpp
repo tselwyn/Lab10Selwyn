@@ -67,6 +67,10 @@ int main(void)
 				sprites[i].bouncesprite(width, height);
 				sprites[i].updatesprite();
 			}
+			for (int i = 0; i < NUM_SPRITES; i++)
+			{
+				sprites[i].collision(sprites, NUM_SPRITES, i, width, height);
+			}
 			redraw = true;
 		}
 		else if (ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)

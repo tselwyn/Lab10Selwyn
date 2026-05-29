@@ -27,7 +27,6 @@ sprite::sprite()
 	framecount = 0;
 	framedelay = 5;
 
-	// specialty power defaults
 	for (int i = 0; i < 4; i++)
 		specialtyPower[i] = false;
 
@@ -136,5 +135,24 @@ void sprite::assignRandomPower()
 
 void sprite::collision(sprite spriteArray[], int arraySize, int myIndex, int screenW, int screenH)
 {
-	// collision detection added in commit 3
+	if (dead) return;
+
+	for (int i = 0; i < arraySize; i++)
+	{
+		if (i == myIndex) continue;
+		if (spriteArray[i].dead) continue;
+
+		if (x < spriteArray[i].getX() + spriteArray[i].getWidth() &&
+			x + width > spriteArray[i].getX())
+		{
+			if (y < spriteArray[i].getY() + spriteArray[i].getHeight() &&
+				y + height > spriteArray[i].getY())
+			{
+				CollisionIsTrue = true;
+
+				x = rand() % (screenW - width);
+				y = rand() % (screenH - height);
+			}
+		}
+	}
 }
